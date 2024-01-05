@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import List
 
 import pendulum
+from packaging import version
 
 from prefect._internal.pydantic import HAS_PYDANTIC_V2
 
@@ -116,8 +117,14 @@ async def data(db, work_queue):
         f_1 = await create_flow(flow=core.Flow(name="f-1", tags=["db", "blue"]))
         await create_flow(flow=core.Flow(name="f-2", tags=["db"]))
 
+        # Pendulum renamed 'period' method to 'interval' in 3.0
+        if version.parse(pendulum.__version__) >= version.parse("3.0"):
+            pendulum_interval = pendulum.interval
+        else:
+            pendulum_interval = pendulum.period
+
         # have a completed flow every 12 hours except weekends
-        for d in pendulum.interval(dt.subtract(days=14), dt).range("hours", 12):
+        for d in pendulum_interval(dt.subtract(days=14), dt).range("hours", 12):
             # skip weekends
             if d.day_of_week in (5, 6):
                 continue
@@ -132,7 +139,7 @@ async def data(db, work_queue):
             )
 
         # have a failed flow every 36 hours except the last 3 days
-        for d in pendulum.interval(dt.subtract(days=14), dt).range("hours", 36):
+        for d in pendulum_interval(dt.subtract(days=14), dt).range("hours", 36):
             # skip recent runs
             if dt.subtract(days=3) <= d < dt:
                 continue
@@ -146,7 +153,7 @@ async def data(db, work_queue):
             )
 
         # a few running runs in the last two days
-        for d in pendulum.interval(dt.subtract(days=2), dt).range("hours", 6):
+        for d in pendulum_interval(dt.subtract(days=2), dt).range("hours", 6):
             await create_flow_run(
                 flow_run=core.FlowRun(
                     flow_id=f_1.id,
@@ -156,7 +163,7 @@ async def data(db, work_queue):
             )
 
         # schedule new runs
-        for d in pendulum.interval(dt.subtract(days=1), dt.add(days=3)).range(
+        for d in pendulum_interval(dt.subtract(days=1), dt.add(days=3)).range(
             "hours", 6
         ):
             await create_flow_run(
