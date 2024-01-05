@@ -118,15 +118,18 @@ async def data(db, work_queue):
         await create_flow(flow=core.Flow(name="f-2", tags=["db"]))
 
         # Pendulum renamed 'period' method to 'interval' in 3.0
+        # and changed weeks to start on Mondays
         if version.parse(pendulum.__version__) >= version.parse("3.0"):
             pendulum_interval = pendulum.interval
+            weekend_days = (5, 6)
         else:
+            weekend_days = (0, 6)
             pendulum_interval = pendulum.period
 
         # have a completed flow every 12 hours except weekends
         for d in pendulum_interval(dt.subtract(days=14), dt).range("hours", 12):
             # skip weekends
-            if d.day_of_week in (5, 6):
+            if d.day_of_week in weekend_days:
                 continue
 
             await create_flow_run(
